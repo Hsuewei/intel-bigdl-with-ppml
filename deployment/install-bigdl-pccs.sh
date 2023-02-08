@@ -4,9 +4,10 @@
 # SBX Intel® Software Guard Extensions Registration Service
 #export apiKey=""
 # Intel® Software Guard Extensions Registration Service
-#export apiKey="090e7725d73b4898ac839c0afcb85fda"
-export apiKey="020f95229906479e85b7c5cd3fafb629"
-export appNamespace="bigdl-alan-2"
+export apiKey="c10a161b3d3847d4a886d880f6e0fe77"
+#export apiKey="020f95229906479e85b7c5cd3fafb629"
+
+export appNamespace="bigdl-alan"
 export pccsUserPassword="admin@QCT"
 export pccsAdminPassword="admin@QCT"
 export pccsCommonName="pccs"
@@ -14,7 +15,8 @@ export pccsSvcName="${pccsCommonName}-svc"
 export pccsSvcPort="18081"
 export pccsStsName="${pccsCommonName}-sts"
 export pccsImageName="docker.io/intelanalytics/pccs:0.3.0-SNAPSHOT"
-export pccsServerNode="wn11.openlab"
+#export pccsServerNode="wn11.openlab"
+export pccsServerNode="adm01.openlab"
 # SSl info
 export ssl_countryName="TW"
 export ssl_cityName="NewTaipei"
