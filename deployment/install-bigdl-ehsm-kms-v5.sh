@@ -5,12 +5,14 @@ readonly script_name=$(basename "${0}")
 readonly script_dir=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 # an array of SGX-enabled nodes in kuberntes
 declare -a SGX_NODES
-SGX_NODES=("wn11.openlab" "wn21.openlab" "wn22.openlab")
+#SGX_NODES=("wn11.openlab" "wn21.openlab" "wn22.openlab")
+SGX_NODES=("wn32.openlab" "wn31.openlab")
 
 ###
 # ehsm-kms related vars
 ###
-export appNamespace="bigdl-alan"
+#export appNamespace="bigdl-alan"
+export appNamespace="bigdl-sbx"
 export couchdbRootUsername="YWRtaW4="
 export couchdbRootPassword="YWRtaW4="
 export plain_couchdbRootUsername="$(echo -n ${couchdbRootUsername} | base64 -d)"
@@ -35,9 +37,11 @@ export ehsmKmsImageName="docker.io/intelccc/ehsm_kms_service-dev:0.3.2"
 # however, bigdl-ehsm-kms-deployment and dekeycache have to co-locate on the same node
 # because bigdl-ehsm-kms-deployment need /var/run/{dkeyprovision.sock,dkey.bin} which is generated from dekeycache
 # and dkeycache can only use hostPath volume to mount dkeyprovision.sock file
-export dkeyserverNodeName="wn11.openlab"
+export dkeyserverNodeName="wn32.openlab"
 # randomly selected from an array of nodes
 #export dkeyserverNodeName=${SGX_NODES[ $RANDOM % ${#SGX_NODES[@]} ]}
+
+
 export dkeyserverCommonName="dkeyserver"
 export dkeyserverStsName="${dkeyserverCommonName}-sts"
 export dkeyserverSvcName="${dkeyserverCommonName}-svc"
@@ -62,7 +66,10 @@ pccsPort="18081"
 # client side vars
 ###
 export enableAttestation="true"
-export clientNamespace="jhub-alan"
+
+#export clientNamespace="jhub-alan"
+export clientNamespace="jhub-sbx"
+
 export clientSaName="spark"
 export clientSaSecretName="${clientSaName}-token"
 export clientClusterRoleBindingName="${clientSaName}-role"
@@ -137,12 +144,13 @@ if [[ "${ACTION}" == "undo-client" ]]; then
   kubectl delete cm $clientConfigMapName -n "${clientNamespace}" --force
   kubectl delete deployment $clientAppDplName -n "${clientNamespace}" --force
   kubectl delete job $clientAppJobName -n "${clientNamespace}" --force
+  kubectl delete pod $clientAppJobName -n "${clientNamespace}" --force
   kubectl delete serviceaccount $clientSaName -n "${clientNamespace}" --force
   kubectl delete secret $clientSaSecretName -n "${clientNamespace}" --force
   kubectl delete secret $clientSslKeysSecretName -n "${clientNamespace}" --force
   kubectl delete secret $clientAuthPasswordSecretName -n "${clientNamespace}" --force
   kubectl delete secret $clientLiteralAuthPasswordSecretName -n "${clientNamespace}" --force
-  kubectl delete ClusterRoleBinding $clientClusterRoleBindingName --force
+  #kubectl delete ClusterRoleBinding $clientClusterRoleBindingName --force
   kubectl get pvc -n "${clientNamespace}" | awk -v ns="${clientNamespace}" '{if(NR!=1){system("kubectl delete pvc "$1" -n "ns)}}'
   kubectl get pv | grep "${clientNamespace}" | awk '{system("kubectl delete pv "$1)}'
   kubectl get svc -n "${clientNamespace}" | grep glusterfs | awk -v ns="${clientNamespace}" '{system("kubectl delete svc "$1" -n "ns)}'
@@ -813,7 +821,7 @@ kubectl apply -f - <&7
 
 # gnerate spark ssl keys and password
 # openssl is required
-{ hash -r; command -V openssl 1>/dev/null 2>&1;} || { echo "jq is not installed, installing now..."; dnf install -y openssl;}
+{ hash -r; command -V openssl 1>/dev/null 2>&1;} || { echo "openssl is not installed, installing now..."; dnf install -y openssl;}
 # invoked in subshell
 (
 /bin/bash \
@@ -838,7 +846,7 @@ tmpfile=$(mktemp /tmp/ID.XXXXXXX)
 cat /root/.kube/config > ${tmpfile}
 kubectl config \
   set-credentials spark-user \
-  --token=$(kubectl get secret ${clientSaSecretName} -n jhub-alan -o jsonpath={.data.token} | base64 -d) \
+  --token=$(kubectl get secret ${clientSaSecretName} -n ${clientNamespace} -o jsonpath={.data.token} | base64 -d) \
   --kubeconfig ${tmpfile}
 kubectl config \
   set-context spark-context \
@@ -958,6 +966,9 @@ $clientKubeConfig
 
     exec 1>&6 6>&-
     exec 2>&7 7>&-
+
+    # 20230321 alan
+    sleep infinity;
   client_env_prep.sh: |
     #!/bin/bash
     export APP_STARTUP_LOG_PATH="/ppml/trusted-big-data-ml/logs/client-env-prep.log"
@@ -1469,11 +1480,14 @@ $clientKubeConfig
             # modified
             #export driverExtraClassPath=\$(cat /opt/spark/conf/spark.properties | grep -P -o "(?<=spark.driver.extraClassPath=).*") && \\
             #echo \$driverExtraClassPath && \\
-            export SGX_MEM_SIZE=\$SGX_DRIVER_MEM_SIZE && \\
             # orginal
             #export sgx_command="/opt/jdk8/bin/java -Dlog4j.configurationFile=/ppml/trusted-big-data-ml/work/spark-3.1.2/conf/log4j2.xml -Xms1G -Xmx\${SGX_DRIVER_JVM_MEM_SIZE} -cp \\"\${SPARK_CLASSPATH}:\${driverExtraClassPath}\\" org.apache.spark.deploy.SparkSubmit --conf spark.driver.bindAddress=\${SPARK_DRIVER_BIND_ADDRESS} --deploy-mode client \\"\$@\\"" && \\
             # modified
-            export sgx_command="/opt/jdk8/bin/java -Dlog4j.configurationFile=/ppml/trusted-big-data-ml/work/spark-3.1.2/conf/log4j2.xml -Xms1G -Xmx\${SGX_DRIVER_JVM_MEM_SIZE} -cp \\"\${SPARK_CLASSPATH}\\" org.apache.spark.deploy.SparkSubmit --conf spark.driver.bindAddress=\${SPARK_DRIVER_BIND_ADDRESS} --deploy-mode client \\"\$@\\"" && \\
+            export SGX_MEM_SIZE=\$SGX_DRIVER_MEM_SIZE && \\
+            # client mode
+            #export sgx_command="/opt/jdk8/bin/java -Dlog4j.configurationFile=/ppml/trusted-big-data-ml/work/spark-3.1.2/conf/log4j2.xml -Xms1G -Xmx\${SGX_DRIVER_JVM_MEM_SIZE} -cp \\"\${SPARK_CLASSPATH}\\" org.apache.spark.deploy.SparkSubmit --conf spark.driver.bindAddress=\${SPARK_DRIVER_BIND_ADDRESS} --deploy-mode client \\"\$@\\"" && \\
+            # cluster mode
+            export sgx_command="/opt/jdk8/bin/java -Dlog4j.configurationFile=/ppml/trusted-big-data-ml/work/spark-3.1.2/conf/log4j2.xml -Xms1G -Xmx\${SGX_DRIVER_JVM_MEM_SIZE} -cp \\"\${SPARK_CLASSPATH}\\" org.apache.spark.deploy.SparkSubmit --conf spark.driver.bindAddress=\${SPARK_DRIVER_BIND_ADDRESS} --deploy-mode cluster \\"\$@\\"" && \\
             if [ "\${ATTESTATION}" = "true" ]; then
               #(deprecated)
               # 20230201 alan use function to call attestation directly
@@ -1516,7 +1530,7 @@ $clientKubeConfig
           "\$@" $PYSPARK_PRIMARY $PYSPARK_ARGS
         )
         ;;
-        driver-r)
+      driver-r)
         CMD=(
           "\$SPARK_HOME/bin/spark-submit"
           --conf "spark.driver.bindAddress=\$SPARK_DRIVER_BIND_ADDRESS"
@@ -1524,7 +1538,7 @@ $clientKubeConfig
           "\$@" $R_PRIMARY $R_ARGS
         )
         ;;
-        executor)
+      executor)
         echo \$SGX_ENABLED && \\
         echo \$SGX_DRIVER_MEM_SIZE && \\
         echo \$SGX_DRIVER_JVM_MEM_SIZE && \\
@@ -1606,8 +1620,12 @@ kubectl create secret generic \
     --from-literal secret=${clientAuthPassword} \
     --namespace $clientNamespace
 
+# 20230321 alan
+# (deprecated)
 # client job: kms-utils pod as a job to create sample encrypted file 
-cat << end_of_manifest 1>&6
+#
+#cat << end_of_manifest 1>&6
+: <<CommentBlock
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -1680,8 +1698,83 @@ spec:
           value: "$ehsmApiKey"
         - name: EHSM_ENROLL_APPID
           value: "$ehsmAppId"
+CommentBlock
+#end_of_manifest
+#kubectl apply -f - <&7
+
+
+# client pod: long-running kms-utils pod to create sample encrypted file, and decrypted the file in the end.
+cat << end_of_manifest 1>&6
+apiVersion: v1
+kind: Pod
+metadata:
+  name: $clientAppJobName
+  namespace: $clientNamespace
+spec:
+      nodeSelector:
+        kubernetes.io/hostname: "$clientNodeName"
+      restartPolicy: Never
+      volumes:
+      - name: client-cm-vol
+        configMap:
+          name: $clientConfigMapName
+          defaultMode: 0755
+      - name: dev-enclave
+        hostPath:
+          path: /dev/sgx_enclave
+      - name: dev-provision
+        hostPath:
+          path: /dev/sgx_provision
+      - name: $clientSharedVolName
+        persistentVolumeClaim:
+          claimName: $clientPvcName
+      containers:
+      - name: $clientAppJobName
+        image: $clientKmsUtilsImageName
+        command: ['/bin/bash']
+        args: ['/home/prep_on_kms_utils.sh']
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: client-cm-vol
+          mountPath: /home/prep_on_kms_utils.sh
+          subPath: prep_on_kms_utils_sh
+        - name: client-cm-vol
+          mountPath: /home/generate_people_csv.py
+          subPath: generate_people_csv_py
+        - name: client-cm-vol
+          mountPath: /etc/sgx_default_qcnl.conf
+          subPath: sgx_default_qcnl_conf
+          readOnly: true
+        - mountPath: /dev/sgx_enclave
+          name: dev-enclave
+        - mountPath: /dev/sgx_provision
+          name: dev-provision
+        - name: $clientSharedVolName
+          mountPath: /home/data
+          subPath: kms_data
+        - name: $clientSharedVolName
+          mountPath: /home/key
+          subPath: kms_key
+        - name: $clientSharedVolName
+          mountPath: /home/logs
+          subPath: shared_logs_dir
+        env:
+        - name: PCCS_URL
+          value: "https://$pccsIP:$pccsPort/sgx/certification/v3/"
+        - name: EHSM_KMS_IP
+          value: "$ehsmKmsSvcIP"
+        - name: EHSM_KMS_PORT
+          value: "$ehsmKmsPort"
+        - name: KMS_TYPE
+          value: "$clientKmsDefaultType"
+        - name: EHSM_ENROLL_APIKEY
+          value: "$ehsmApiKey"
+        - name: EHSM_ENROLL_APPID
+          value: "$ehsmAppId"
 end_of_manifest
 kubectl apply -f - <&7
+
 
 
 # client pod: client app container
