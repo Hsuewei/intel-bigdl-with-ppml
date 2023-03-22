@@ -79,5 +79,27 @@ The README.MD on gitlab is underconstruction. Please refer to [this page](https:
 	--kmsServerIP "${KMS_SERVER_IP}" \
 	--kmsServerPort "${KMS_SERVER_PORT}" \
 	--ehsmAPPID "${APP_ID}" \
+	--ehsmAPIKEY "${API_KEY}" | tee -a $(pwd)/job-stdout
+	```
+4. Sample command for decryption:
+	``` bash
+	# action: decrypt
+	# KMS_TYPE: ehsm
+	#--inputPath $input_path \
+	#--inputPath "/ppml/trusted-big-data-ml/work/kms_data/" \
+	
+	java -cp "${BIGDL_HOME}/jars/bigdl-ppml-spark_${SPARK_VERSION}-${BIGDL_VERSION}.jar:${SPARK_HOME}/jars/*:${SPARK_HOME}/examples/jars/*:${BIGDL_HOME}/jars/*" \
+	com.intel.analytics.bigdl.ppml.examples.Decrypt \
+	--inputPath "${SIMEPLEQUERY_OUTPUT_PATH}/simplequery" \
+	--inputPartitionNum 8 \
+	--outputPartitionNum 8 \
+	--inputEncryptModeValue AES/CBC/PKCS5Padding \
+	--outputEncryptModeValue plain_text \
+	--primaryKeyPath "/ppml/trusted-big-data-ml/work/kms_key/ehsm_encrypted_primary_key" \
+	--dataKeyPath "/ppml/trusted-big-data-ml/work/kms_key/ehsm_encrypted_data_key" \
+	--kmsType EHSMKeyManagementService \
+	--kmsServerIP "${KMS_SERVER_IP}" \
+	--kmsServerPort "${KMS_SERVER_PORT}" \
+	--ehsmAPPID "${APP_ID}" \
 	--ehsmAPIKEY "${API_KEY}"
 	```
