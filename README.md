@@ -89,7 +89,11 @@ The README.MD on gitlab is underconstruction. Please refer to [this page](https:
                 3. Move all(include dot file) generated(from simplequery job) files to created directory
                 4. Decrypt generated result
                 5. Store decryption-stdout in created directory
-		```		
+		```
+        - execute `decryption.sh` in working directory
+		``` bash
+                ./decryption.sh
+		```
 	- sample decrpytion command
 		``` bash
 		# action: decrypt
