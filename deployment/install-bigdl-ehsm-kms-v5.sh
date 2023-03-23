@@ -37,7 +37,8 @@ export ehsmKmsImageName="docker.io/intelccc/ehsm_kms_service-dev:0.3.2"
 # however, bigdl-ehsm-kms-deployment and dekeycache have to co-locate on the same node
 # because bigdl-ehsm-kms-deployment need /var/run/{dkeyprovision.sock,dkey.bin} which is generated from dekeycache
 # and dkeycache can only use hostPath volume to mount dkeyprovision.sock file
-export dkeyserverNodeName="wn32.openlab"
+#export dkeyserverNodeName="wn32.openlab"
+export dkeyserverNodeName="wn31.openlab"
 # randomly selected from an array of nodes
 #export dkeyserverNodeName=${SGX_NODES[ $RANDOM % ${#SGX_NODES[@]} ]}
 
@@ -86,9 +87,11 @@ export clientSharedVolName="client-vol"
 export clientConfigMapName="client-cm"
 
 # randomly selected from a list of nodes
-export clientNodeName=${SGX_NODES[ $RANDOM % ${#SGX_NODES[@]} ]}
+#export clientNodeName=${SGX_NODES[ $RANDOM % ${#SGX_NODES[@]} ]}
 #export clientNodeName="wn21.openlab"
 #export clientNodeName="wn22.openlab"
+#export clientNodeName="wn31.openlab"
+export clientNodeName="wn32.openlab"
 
 
 
@@ -968,7 +971,7 @@ $clientKubeConfig
     exec 2>&7 7>&-
 
     # 20230321 alan
-    sleep infinity;
+    #sleep infinity;
   client_env_prep.sh: |
     #!/bin/bash
     export APP_STARTUP_LOG_PATH="/ppml/trusted-big-data-ml/logs/client-env-prep.log"
@@ -1606,6 +1609,35 @@ $clientKubeConfig
     
     # Execute the container CMD under tini for better hygiene
     #exec /usr/bin/tini -s -- "\${CMD[@]}"
+  decryption_sh: |
+    #!/bin/bash
+    for file in "\${SIMEPLEQUERY_OUTPUT_PATH}"/* ;do
+      if [[ "\${file}" == *spark-application* ]];then
+        #echo "reference path would be \${SIMEPLEQUERY_OUTPUT_PATH}/\${file}"
+        # \${file} use full path from /
+        echo "reference path would be \${file}"
+        echo "try to archive spark event log and encrypted simplequery result from previous run:"
+        ARC_PATH=\${SIMEPLEQUERY_OUTPUT_PATH}/\${file##*-}; mkdir \${ARC_PATH}; shopt -s dotglob; mv \${SIMEPLEQUERY_OUTPUT_PATH}/simplequery/* \${ARC_PATH}; mv \${file} \${ARC_PATH}; mv \$(pwd)/job-stdout \${ARC_PATH}
+
+        # try to decrypted simplequery result
+        # kms-type: ehsm
+        java -cp "\${BIGDL_HOME}/jars/bigdl-ppml-spark_\${SPARK_VERSION}-\${BIGDL_VERSION}.jar:\${SPARK_HOME}/jars/*:\${SPARK_HOME}/examples/jars/*:\${BIGDL_HOME}/jars/*" \\
+        com.intel.analytics.bigdl.ppml.examples.Decrypt \\
+        --inputPath \$(find \${ARC_PATH} -name *.csv.cbc) \\
+        --inputPartitionNum 8 \\
+        --outputPartitionNum 8 \\
+        --inputEncryptModeValue AES/CBC/PKCS5Padding \\
+        --outputEncryptModeValue plain_text \\
+        --primaryKeyPath "/ppml/trusted-big-data-ml/work/kms_key/ehsm_encrypted_primary_key" \\
+        --dataKeyPath "/ppml/trusted-big-data-ml/work/kms_key/ehsm_encrypted_data_key" \\
+        --kmsType EHSMKeyManagementService \\
+        --kmsServerIP "\${KMS_SERVER_IP}" \\
+        --kmsServerPort "\${KMS_SERVER_PORT}" \\
+        --ehsmAPPID "\${APP_ID}" \\
+        --ehsmAPIKEY "\${API_KEY}" | tee -a \${ARC_PATH}/decryption-stdout
+      fi
+    done
+    
 end_of_manifest
 kubectl apply -f - <&7
 
@@ -1620,12 +1652,8 @@ kubectl create secret generic \
     --from-literal secret=${clientAuthPassword} \
     --namespace $clientNamespace
 
-# 20230321 alan
-# (deprecated)
 # client job: kms-utils pod as a job to create sample encrypted file 
-#
-#cat << end_of_manifest 1>&6
-: <<CommentBlock
+cat << end_of_manifest 1>&6
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -1698,13 +1726,13 @@ spec:
           value: "$ehsmApiKey"
         - name: EHSM_ENROLL_APPID
           value: "$ehsmAppId"
-CommentBlock
-#end_of_manifest
-#kubectl apply -f - <&7
+end_of_manifest
+kubectl apply -f - <&7
 
 
+: <<CommentBlock
 # client pod: long-running kms-utils pod to create sample encrypted file, and decrypted the file in the end.
-cat << end_of_manifest 1>&6
+#cat << end_of_manifest 1>&6
 apiVersion: v1
 kind: Pod
 metadata:
@@ -1772,8 +1800,9 @@ spec:
           value: "$ehsmApiKey"
         - name: EHSM_ENROLL_APPID
           value: "$ehsmAppId"
-end_of_manifest
-kubectl apply -f - <&7
+#end_of_manifest
+#kubectl apply -f - <&7
+CommentBlock
 
 
 
@@ -1827,6 +1856,9 @@ spec:
         command: ['/bin/bash']
         args: ['/opt/client_env_prep.sh']
         volumeMounts:
+        - name: client-cm-vol
+          mountPath: /ppml/trusted-big-data-ml/decryption.sh
+          subPath: decryption_sh
         - name: client-cm-vol
           mountPath: /opt/client_env_prep.sh
           subPath: client_env_prep.sh
