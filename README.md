@@ -81,25 +81,34 @@ The README.MD on gitlab is underconstruction. Please refer to [this page](https:
 	--ehsmAPPID "${APP_ID}" \
 	--ehsmAPIKEY "${API_KEY}" | tee -a $(pwd)/job-stdout
 	```
-4. Sample command for decryption:
-	``` bash
-	# action: decrypt
-	# KMS_TYPE: ehsm
-	#--inputPath $input_path \
-	#--inputPath "/ppml/trusted-big-data-ml/work/kms_data/" \
-	
-	java -cp "${BIGDL_HOME}/jars/bigdl-ppml-spark_${SPARK_VERSION}-${BIGDL_VERSION}.jar:${SPARK_HOME}/jars/*:${SPARK_HOME}/examples/jars/*:${BIGDL_HOME}/jars/*" \
-	com.intel.analytics.bigdl.ppml.examples.Decrypt \
-	--inputPath "${SIMEPLEQUERY_OUTPUT_PATH}/simplequery" \
-	--inputPartitionNum 8 \
-	--outputPartitionNum 8 \
-	--inputEncryptModeValue AES/CBC/PKCS5Padding \
-	--outputEncryptModeValue plain_text \
-	--primaryKeyPath "/ppml/trusted-big-data-ml/work/kms_key/ehsm_encrypted_primary_key" \
-	--dataKeyPath "/ppml/trusted-big-data-ml/work/kms_key/ehsm_encrypted_data_key" \
-	--kmsType EHSMKeyManagementService \
-	--kmsServerIP "${KMS_SERVER_IP}" \
-	--kmsServerPort "${KMS_SERVER_PORT}" \
-	--ehsmAPPID "${APP_ID}" \
-	--ehsmAPIKEY "${API_KEY}"
-	```
+4. Instructions for decryption:
+	- After status of the spark executors is Completed without Error, you can execute `decryption.sh` to decrypt spark result. This script will make several things:
+		```
+                1. Create directory named after spark application id
+                2. Store job-stdout in created directory
+                3. Move all(include dot file) generated(from simplequery job) files to created directory
+                4. Decrypt generated result
+                5. Store decryption-stdout in created directory
+		```		
+	- sample decrpytion command
+		``` bash
+		# action: decrypt
+		# KMS_TYPE: ehsm
+		#--inputPath $input_path \
+		#--inputPath "/ppml/trusted-big-data-ml/work/kms_data/" \
+		
+		java -cp "${BIGDL_HOME}/jars/bigdl-ppml-spark_${SPARK_VERSION}-${BIGDL_VERSION}.jar:${SPARK_HOME}/jars/*:${SPARK_HOME}/examples/jars/*:${BIGDL_HOME}/jars/*" \
+		com.intel.analytics.bigdl.ppml.examples.Decrypt \
+		--inputPath "${SIMEPLEQUERY_OUTPUT_PATH}/simplequery" \
+		--inputPartitionNum 8 \
+		--outputPartitionNum 8 \
+		--inputEncryptModeValue AES/CBC/PKCS5Padding \
+		--outputEncryptModeValue plain_text \
+		--primaryKeyPath "/ppml/trusted-big-data-ml/work/kms_key/ehsm_encrypted_primary_key" \
+		--dataKeyPath "/ppml/trusted-big-data-ml/work/kms_key/ehsm_encrypted_data_key" \
+		--kmsType EHSMKeyManagementService \
+		--kmsServerIP "${KMS_SERVER_IP}" \
+		--kmsServerPort "${KMS_SERVER_PORT}" \
+		--ehsmAPPID "${APP_ID}" \
+		--ehsmAPIKEY "${API_KEY}"
+		```
