@@ -1,9 +1,16 @@
 # Intel Bigdl with PPML workload
 
 ## simplequery:
-The README.MD on gitlab is underconstruction. Please refer to [this page](https://hackmd.io/@3oatvhDfTSqijOwo0tingw/Syp8dnHuj) for temporary instrctions.
+The README.MD on gitlab is under construction. Please refer to [this page](https://hackmd.io/@3oatvhDfTSqijOwo0tingw/Syp8dnHuj) for:
+1. Driver Installation: In kernel, DCAP or out-of-tree
+2. SGX Software installation: User or developer mode
+3. Prepare "SGX-enabled" platform
+4. Additional instructions on deployment of PCCS 
+
+---
+Deployment of Demo Intel PPML simplequery:
 1. Preparation:
-	- Done preparation of several SGX-enables nodes(in this case, `wn{21,22,11}.openlab`)
+	- Done preparation of several SGX-enables nodes(in this case, `wn{31,32}.openlab`)
 	- Done registration of Intel provision certificate and obtained API key
 	- Deployed a kubernetes cluster
 	- Configured variables in `deployment/install-bigdl-pccs.sh`
