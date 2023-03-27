@@ -101,7 +101,7 @@ Deployment of Demo Intel PPML simplequery:
 		``` bash
                 ./decryption.sh
 		```
-	- sample decrpytion command
+	- sample decrpytion command(Just for reference)
 		``` bash
 		# action: decrypt
 		# KMS_TYPE: ehsm
@@ -110,7 +110,7 @@ Deployment of Demo Intel PPML simplequery:
 		
 		java -cp "${BIGDL_HOME}/jars/bigdl-ppml-spark_${SPARK_VERSION}-${BIGDL_VERSION}.jar:${SPARK_HOME}/jars/*:${SPARK_HOME}/examples/jars/*:${BIGDL_HOME}/jars/*" \
 		com.intel.analytics.bigdl.ppml.examples.Decrypt \
-		--inputPath "${SIMEPLEQUERY_OUTPUT_PATH}/simplequery" \
+		--inputPath "${SIMEPLEQUERY_OUTPUT_PATH}/simplequery/foo.bar.csv.cbc" \
 		--inputPartitionNum 8 \
 		--outputPartitionNum 8 \
 		--inputEncryptModeValue AES/CBC/PKCS5Padding \
